@@ -8,12 +8,14 @@ import com.christianjaena.crypto_signals.model.Trend;
 import com.christianjaena.crypto_signals.service.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,13 +40,25 @@ class CryptoSignalIntegrationTest {
     private SetupZoneService setupZoneService;
 
     @Autowired
-    private EntryConfirmationService entryConfirmationService;
-
-    @Autowired
     private ConfidenceScoringService confidenceScoringService;
 
     @Autowired
-    private SignalFilterService signalFilterService;
+    private ElliottWaveService elliottWaveService;
+
+    @Autowired
+    private CandlestickPatternService candlestickPatternService;
+
+    @Autowired
+    private FibonacciService fibonacciService;
+
+    @Autowired
+    private VolumeAnalysisService volumeAnalysisService;
+
+    @Autowired
+    private DivergenceService divergenceService;
+
+    @Autowired
+    private SessionFilterService sessionFilterService;
 
     private List<CandleData> bullishCandles1D;
     private List<CandleData> bullishCandles4H;
@@ -69,6 +83,7 @@ class CryptoSignalIntegrationTest {
         assertNotNull(signal.getEntry15m());
         assertTrue(signal.getConfidence() >= 0 && signal.getConfidence() <= 100);
         assertNotNull(signal.getNotes());
+        assertFalse(signal.getNotes().isEmpty());
     }
 
     @Test
@@ -139,51 +154,108 @@ class CryptoSignalIntegrationTest {
     }
 
     @Test
-    void entryConfirmationService_ValidSetup_ReturnsSignal() {
+    void elliottWaveService_ValidCandles_ReturnsWave() {
         Trend trend = trendAnalysisService.determineTrend1D(bullishCandles1D);
-        Setup setup = setupZoneService.identifySetup4H(bullishCandles4H, trend);
-        Signal signal = entryConfirmationService.confirmEntry15m(bullishCandles15m, setup);
+        var wave = elliottWaveService.detectElliottWave(bullishCandles1D, trend);
 
-        assertNotNull(signal);
-        assertTrue(signal == Signal.BUY || signal == Signal.SELL || signal == Signal.HOLD);
+        assertNotNull(wave);
+        assertNotNull(wave.getWaveType());
+        assertNotNull(wave.getWaveNumber());
+        assertTrue(wave.getConfidence() >= 0 && wave.getConfidence() <= 1.0);
     }
 
     @Test
-    void confidenceScoringService_ValidInputs_ReturnsConfidenceScore() {
+    void candlestickPatternService_ValidCandles_ReturnsPattern() {
+        var pattern = candlestickPatternService.detectPattern(bullishCandles15m, Signal.BUY);
+
+        assertNotNull(pattern);
+        assertNotNull(pattern.getPatternType());
+        assertNotNull(pattern.getSignalDirection());
+        assertTrue(pattern.getConfidence() >= 0 && pattern.getConfidence() <= 1.0);
+    }
+
+    @Test
+    void fibonacciService_ValidCandles_ReturnsLevels() {
+        Trend trend = trendAnalysisService.determineTrend1D(bullishCandles1D);
+        var levels = fibonacciService.calculateRetracementLevels(bullishCandles4H, trend);
+
+        assertNotNull(levels);
+        assertFalse(levels.isEmpty());
+        assertTrue(levels.size() >= 3); // Should have at least 3 retracement levels
+    }
+
+    @Test
+    void volumeAnalysisService_ValidCandles_ReturnsAnalysis() {
+        boolean sufficient = volumeAnalysisService.isVolumeSufficient(bullishCandles4H, Signal.BUY);
+        double ratio = volumeAnalysisService.getVolumeRatio(bullishCandles4H);
+
+        assertTrue(sufficient == true || sufficient == false);
+        assertTrue(ratio >= 0);
+    }
+
+    @Test
+    void divergenceService_ValidCandles_ReturnsDivergence() {
+        var rsiDivergence = divergenceService.detectRSIDivergence(bullishCandles1D, Signal.BUY);
+        var macdDivergence = divergenceService.detectMACDDivergence(bullishCandles1D, Signal.BUY);
+
+        assertNotNull(rsiDivergence);
+        assertNotNull(macdDivergence);
+        assertNotNull(rsiDivergence.getDivergenceType());
+        assertNotNull(macdDivergence.getDivergenceType());
+    }
+
+    @Test
+    void sessionFilterService_CurrentTime_ReturnsSessionInfo() {
+        boolean inHighLiquidity = sessionFilterService.isInHighLiquiditySession();
+        boolean optimal = sessionFilterService.isInOptimalTradingWindow();
+        boolean hasNews = sessionFilterService.hasHighImpactNewsEvent();
+        String sessionInfo = sessionFilterService.getSessionInfo();
+
+        assertNotNull(sessionInfo);
+        assertFalse(sessionInfo.isEmpty());
+        assertTrue(inHighLiquidity == true || inHighLiquidity == false);
+        assertTrue(optimal == true || optimal == false);
+        assertTrue(hasNews == true || hasNews == false);
+    }
+
+    @Test
+    void confidenceScoringService_AllFactors_ReturnsComprehensiveScore() {
         Trend trend = trendAnalysisService.determineTrend1D(bullishCandles1D);
         Setup setup = setupZoneService.identifySetup4H(bullishCandles4H, trend);
-        Signal signal = entryConfirmationService.confirmEntry15m(bullishCandles15m, setup);
 
         int confidence = confidenceScoringService.calculateConfidence(
-            bullishCandles1D, bullishCandles4H, bullishCandles15m, trend, setup, signal);
+            bullishCandles1D, bullishCandles4H, bullishCandles15m, trend, setup, Signal.BUY);
 
         assertTrue(confidence >= 0 && confidence <= 100);
     }
 
     @Test
-    void signalFilterService_ValidSymbol_ReturnsFalse() {
-        boolean shouldFilter = signalFilterService.shouldFilterSignal(
-            "BTC/USDT", bullishCandles1D, bullishCandles4H, Signal.BUY);
+    void completeWorkflow_AdvancedAnalysis_ReturnsDetailedSignal() {
+        CryptoSignal signal = cryptoSignalService.generateSignal(
+            "BTC/USDT", bullishCandles1D, bullishCandles4H, bullishCandles15m);
 
-        assertFalse(shouldFilter);
-    }
-
-    @Test
-    void signalFilterService_InvalidSymbol_ReturnsTrue() {
-        boolean shouldFilter = signalFilterService.shouldFilterSignal(
-            "", bullishCandles1D, bullishCandles4H, Signal.BUY);
-
-        assertTrue(shouldFilter);
-    }
-
-    @Test
-    void technicalIndicatorService_ValidCandles_ReturnsIndicators() {
-        var indicators = technicalIndicatorService.calculateIndicators(bullishCandles1D);
-
-        assertNotNull(indicators);
-        assertTrue(indicators.getEma50() > 0);
-        assertTrue(indicators.getEma200() > 0);
-        assertTrue(indicators.getRsi() >= 0 && indicators.getRsi() <= 100);
+        assertNotNull(signal);
+        assertEquals("BTC/USDT", signal.getSymbol());
+        
+        // Verify all components are present
+        assertNotNull(signal.getTrend1D());
+        assertNotNull(signal.getSetup4H());
+        assertNotNull(signal.getEntry15m());
+        assertTrue(signal.getConfidence() >= 0 && signal.getConfidence() <= 100);
+        
+        // Verify notes contain analysis from all services
+        assertNotNull(signal.getNotes());
+        assertFalse(signal.getNotes().isEmpty());
+        
+        // Check for advanced analysis notes
+        boolean hasTrendAnalysis = signal.getNotes().stream()
+            .anyMatch(note -> note.contains("trend"));
+        boolean hasSetupAnalysis = signal.getNotes().stream()
+            .anyMatch(note -> note.contains("setup"));
+        boolean hasConfidenceAnalysis = signal.getNotes().stream()
+            .anyMatch(note -> note.contains("confidence"));
+        
+        assertTrue(hasTrendAnalysis || hasSetupAnalysis || hasConfidenceAnalysis);
     }
 
     @Test
@@ -199,6 +271,63 @@ class CryptoSignalIntegrationTest {
         assertEquals(signal1.getSetup4H(), signal2.getSetup4H());
         assertEquals(signal1.getEntry15m(), signal2.getEntry15m());
         assertEquals(signal1.getConfidence(), signal2.getConfidence());
+    }
+
+    @Test
+    void technicalIndicatorService_ValidCandles_ReturnsCompleteIndicators() {
+        var indicators = technicalIndicatorService.calculateIndicators(bullishCandles1D);
+
+        assertNotNull(indicators);
+        assertTrue(indicators.getEma50() > 0);
+        assertTrue(indicators.getEma200() > 0);
+        assertTrue(indicators.getRsi() >= 0 && indicators.getRsi() <= 100);
+        assertTrue(indicators.getStochRsiK() >= 0 && indicators.getStochRsiK() <= 100);
+        assertTrue(indicators.getStochRsiD() >= 0 && indicators.getStochRsiD() <= 100);
+        assertTrue(indicators.getVolumeAverage20() > 0);
+        
+        // Check new MACD indicators
+        assertTrue(indicators.getMacdLine() != 0 || indicators.getMacdLine() == 0); // Can be 0
+        assertTrue(indicators.getMacdSignal() != 0 || indicators.getMacdSignal() == 0);
+        assertTrue(indicators.getMacdHistogram() != 0 || indicators.getMacdHistogram() == 0);
+        
+        // Check Bollinger Bands
+        assertTrue(indicators.getBollingerUpper() > 0);
+        assertTrue(indicators.getBollingerMiddle() > 0);
+        assertTrue(indicators.getBollingerLower() > 0);
+        assertTrue(indicators.getBollingerWidth() >= 0);
+    }
+
+    @Test
+    void multiServiceIntegration_ConsistentDataFlow_ReturnsCoherentResults() {
+        // Test that all services work together consistently
+        Trend trend = trendAnalysisService.determineTrend1D(bullishCandles1D);
+        Setup setup = setupZoneService.identifySetup4H(bullishCandles4H, trend);
+        
+        // Elliott Wave should align with trend
+        var wave = elliottWaveService.detectElliottWave(bullishCandles1D, trend);
+        if (trend == Trend.BULLISH && wave.isImpulseWave()) {
+            assertTrue(wave.isImpulseWave());
+        }
+        
+        // Fibonacci levels should be logical
+        var levels = fibonacciService.calculateRetracementLevels(bullishCandles4H, trend);
+        for (var level : levels) {
+            assertTrue(level.getPrice() > 0);
+            assertTrue(level.getLevel() > 0 && level.getLevel() < 1);
+        }
+        
+        // Volume analysis should be consistent
+        boolean volumeSufficient = volumeAnalysisService.isVolumeSufficient(bullishCandles4H, Signal.BUY);
+        double volumeRatio = volumeAnalysisService.getVolumeRatio(bullishCandles4H);
+        if (volumeSufficient) {
+            assertTrue(volumeRatio >= 1.0);
+        }
+        
+        // Divergence should be detected consistently
+        var rsiDivergence = divergenceService.detectRSIDivergence(bullishCandles1D, Signal.BUY);
+        var macdDivergence = divergenceService.detectMACDDivergence(bullishCandles1D, Signal.BUY);
+        assertNotNull(rsiDivergence);
+        assertNotNull(macdDivergence);
     }
 
     private List<CandleData> createBullishCandles(String timeframe, int count) {

@@ -68,7 +68,7 @@ class SetupZoneServiceTest {
         TechnicalIndicators indicators = createPriceFarFromEMAIndicators();
         when(technicalIndicatorService.calculateIndicators(any())).thenReturn(indicators);
 
-        Setup setup = setupZoneService.identifySetup4H(testCandles, Trend.BULLISH);
+        Setup setup = setupZoneService.identifySetup4H(createFarFromEMATestCandles(), Trend.BULLISH);
 
         assertEquals(Setup.NONE, setup);
     }
@@ -160,6 +160,14 @@ class SetupZoneServiceTest {
         indicators.setEma50(100000.0);
         indicators.setRsi(35.0);
         return indicators;
+    }
+
+    private List<CandleData> createFarFromEMATestCandles() {
+        return Arrays.asList(
+            createCandle(100000.0),
+            createCandle(100500.0),
+            createCandle(103000.0)  // 3% away from EMA50 (100000) - should be far
+        );
     }
 
     private List<CandleData> createTestCandles() {

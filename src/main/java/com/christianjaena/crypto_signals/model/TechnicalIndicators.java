@@ -14,4 +14,15 @@ public class TechnicalIndicators {
     private double stochRsiK;
     private double stochRsiD;
     private double volumeAverage20;
+    
+    // MACD indicators
+    private double macdLine;
+    private double macdSignal;
+    private double macdHistogram;
+    
+    // Bollinger Bands
+    private double bollingerUpper;
+    private double bollingerMiddle;
+    private double bollingerLower;
+    private double bollingerWidth;
 }
