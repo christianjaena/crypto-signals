@@ -6,6 +6,7 @@
 
 - **Symbols** (e.g., BTC, ETH, SOL) — USDT is automatically appended
 - Multiple symbols can be passed in a single request
+- **MEXC API**: Uses public endpoints - no API key required
 - **Candle data** (OHLCV) for three timeframes:
   - HTF = 1D
   - MTF = 4H
