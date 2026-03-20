@@ -3,7 +3,7 @@ spring:
     name: crypto-signals
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 # MEXC API Configuration (public endpoints - no auth required)
 mexc:
