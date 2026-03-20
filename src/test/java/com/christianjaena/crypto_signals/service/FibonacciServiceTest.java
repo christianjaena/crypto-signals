@@ -119,7 +119,7 @@ class FibonacciServiceTest {
     @Test
     void findNearestResistance_SellSignalNearResistance_ReturnsResistanceLevel() {
         List<CandleData> resistanceCandles = createResistanceTestCandles();
-        double currentPrice = 112360.0; // Exactly at 61.8% retracement level
+        double currentPrice = 117000.0; // Near the 61.8% retracement level (~118579)
 
         FibonacciLevel resistance = fibonacciService.findNearestResistance(resistanceCandles, currentPrice, Signal.SELL);
 
@@ -169,7 +169,7 @@ class FibonacciServiceTest {
 
     @Test
     void getConfidenceBonus_NearNonKeyLevel_Returns5() {
-        double currentPrice = 138200.0; // Exactly at 23.6% retracement - non-key level
+        double currentPrice = 139000.0; // Above 23.6% retracement (~138874) - non-key level
 
         int bonus = fibonacciService.getConfidenceBonus(testCandles, currentPrice, Signal.BUY);
 
