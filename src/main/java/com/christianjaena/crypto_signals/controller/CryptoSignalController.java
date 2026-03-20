@@ -1,5 +1,6 @@
 package com.christianjaena.crypto_signals.controller;
 
+import com.christianjaena.crypto_signals.dto.SignalRequest;
 import com.christianjaena.crypto_signals.model.CandleData;
 import com.christianjaena.crypto_signals.model.CryptoSignal;
 import com.christianjaena.crypto_signals.service.CryptoSignalService;
@@ -80,17 +81,6 @@ public class CryptoSignalController {
         }
     }
 
-    @Operation(summary = "Get available symbols", description = "Retrieve list of available trading symbols from MEXC")
-    @GetMapping("/symbols")
-    public ResponseEntity<List<String>> getAvailableSymbols() {
-        try {
-            List<String> symbols = mexcApiService.getAvailableSymbols();
-            return ResponseEntity.ok(symbols);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @Operation(summary = "Health check", description = "Check if the service is running")
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
@@ -100,48 +90,5 @@ public class CryptoSignalController {
             "service", "crypto-signals",
             "exchange", "MEXC"
         ));
-    }
-
-    @Operation(summary = "Clear all signal history", description = "Clear all stored signal history")
-    @DeleteMapping("/history")
-    public ResponseEntity<Void> clearAllSignalHistory() {
-        cryptoSignalService.clearAllSignalHistory();
-        return ResponseEntity.ok().build();
-    }
-
-    private int getTimeframeHours(String timeframe) {
-        switch (timeframe) {
-            case "1D": return 24;
-            case "4H": return 4;
-            case "15m": return 0;
-            default: return 1;
-        }
-    }
-
-    @Schema(description = "Signal generation request")
-    public static class SignalRequest {
-        @Schema(description = "Trading symbol", example = "BTC/USDT")
-        private String symbol;
-        
-        @Schema(description = "1D candlestick data")
-        private List<CandleData> candles1D;
-        
-        @Schema(description = "4H candlestick data")
-        private List<CandleData> candles4H;
-        
-        @Schema(description = "15m candlestick data")
-        private List<CandleData> candles15m;
-
-        public String getSymbol() { return symbol; }
-        public void setSymbol(String symbol) { this.symbol = symbol; }
-
-        public List<CandleData> getCandles1D() { return candles1D; }
-        public void setCandles1D(List<CandleData> candles1D) { this.candles1D = candles1D; }
-
-        public List<CandleData> getCandles4H() { return candles4H; }
-        public void setCandles4H(List<CandleData> candles4H) { this.candles4H = candles4H; }
-
-        public List<CandleData> getCandles15m() { return candles15m; }
-        public void setCandles15m(List<CandleData> candles15m) { this.candles15m = candles15m; }
     }
 }

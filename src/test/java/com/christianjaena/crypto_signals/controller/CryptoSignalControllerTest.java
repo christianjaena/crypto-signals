@@ -1,5 +1,6 @@
 package com.christianjaena.crypto_signals.controller;
 
+import com.christianjaena.crypto_signals.dto.SignalRequest;
 import com.christianjaena.crypto_signals.model.CandleData;
 import com.christianjaena.crypto_signals.model.CryptoSignal;
 import com.christianjaena.crypto_signals.service.CryptoSignalService;
@@ -72,23 +73,6 @@ class CryptoSignalControllerTest {
     }
 
     @Test
-    void getAvailableSymbols_WithValidData_ReturnsSymbols() throws Exception {
-        // Arrange
-        List<String> symbols = Arrays.asList("BTC/USDT", "ETH/USDT", "BNB/USDT");
-        when(mexcApiService.getAvailableSymbols()).thenReturn(symbols);
-
-        // Act & Assert
-        mockMvc.perform(get("/api/signals/symbols"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0]").value("BTC/USDT"))
-                .andExpect(jsonPath("$[1]").value("ETH/USDT"))
-                .andExpect(jsonPath("$[2]").value("BNB/USDT"));
-
-        verify(mexcApiService).getAvailableSymbols();
-    }
-
-    @Test
     void generateSignalForSymbol_WithValidSymbol_ReturnsSignal() throws Exception {
         // Arrange
         when(mexcApiService.isSymbolValid("BTC/USDT")).thenReturn(true);
@@ -122,18 +106,9 @@ class CryptoSignalControllerTest {
     }
 
     @Test
-    void clearAllSignalHistory_ReturnsOk() throws Exception {
-        // Act & Assert
-        mockMvc.perform(delete("/api/signals/history"))
-                .andExpect(status().isOk());
-
-        verify(cryptoSignalService).clearAllSignalHistory();
-    }
-
-    @Test
     void generateSignal_WithValidRequest_ReturnsSignal() throws Exception {
         // Arrange
-        CryptoSignalController.SignalRequest request = new CryptoSignalController.SignalRequest();
+        SignalRequest request = new SignalRequest();
         request.setSymbol("BTC/USDT");
         request.setCandles1D(mockCandles1D);
         request.setCandles4H(mockCandles4H);
