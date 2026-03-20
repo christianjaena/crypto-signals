@@ -60,10 +60,10 @@ public class CryptoSignalController {
         @ApiResponse(responseCode = "400", description = "Invalid symbol or API error"),
         @ApiResponse(responseCode = "404", description = "Symbol not found")
     })
-    @GetMapping("/generate/{symbol}")
+    @GetMapping("/generate")
     public ResponseEntity<CryptoSignal> generateSignalForSymbol(
             @Parameter(description = "Trading symbol (e.g., BTC/USDT)", required = true)
-            @PathVariable String symbol) {
+            @RequestParam String symbol) {
         try {
             if (!mexcApiService.isSymbolValid(symbol)) {
                 return ResponseEntity.notFound().build();
@@ -72,23 +72,6 @@ public class CryptoSignalController {
             List<CandleData> candles1D = mexcApiService.getKlineData(symbol, "1d", 200);
             List<CandleData> candles4H = mexcApiService.getKlineData(symbol, "4h", 100);
             List<CandleData> candles15m = mexcApiService.getKlineData(symbol, "15m", 50);
-
-            CryptoSignal signal = cryptoSignalService.generateSignal(symbol, candles1D, candles4H, candles15m);
-            return ResponseEntity.ok(signal);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @Operation(summary = "Generate signal with mock data", description = "Generate trading signal using simulated data for testing")
-    @GetMapping("/generate/{symbol}/mock")
-    public ResponseEntity<CryptoSignal> generateMockSignal(
-            @Parameter(description = "Trading symbol (e.g., BTC/USDT)", required = true)
-            @PathVariable String symbol) {
-        try {
-            List<CandleData> candles1D = generateMockCandleData(symbol, "1D", 200);
-            List<CandleData> candles4H = generateMockCandleData(symbol, "4H", 100);
-            List<CandleData> candles15m = generateMockCandleData(symbol, "15m", 50);
 
             CryptoSignal signal = cryptoSignalService.generateSignal(symbol, candles1D, candles4H, candles15m);
             return ResponseEntity.ok(signal);
@@ -108,22 +91,6 @@ public class CryptoSignalController {
         }
     }
 
-    @Operation(summary = "Clear signal history", description = "Clear signal history for a specific symbol")
-    @DeleteMapping("/history/{symbol}")
-    public ResponseEntity<Void> clearSignalHistory(
-            @Parameter(description = "Trading symbol", required = true)
-            @PathVariable String symbol) {
-        cryptoSignalService.clearSignalHistory(symbol);
-        return ResponseEntity.ok().build();
-    }
-
-    @Operation(summary = "Clear all signal history", description = "Clear signal history for all symbols")
-    @DeleteMapping("/history")
-    public ResponseEntity<Void> clearAllSignalHistory() {
-        cryptoSignalService.clearAllSignalHistory();
-        return ResponseEntity.ok().build();
-    }
-
     @Operation(summary = "Health check", description = "Check if the service is running")
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
@@ -135,34 +102,11 @@ public class CryptoSignalController {
         ));
     }
 
-    private List<CandleData> generateMockCandleData(String symbol, String timeframe, int count) {
-        List<CandleData> candles = new java.util.ArrayList<>();
-        double basePrice = 50000.0;
-        LocalDateTime now = LocalDateTime.now();
-
-        for (int i = count - 1; i >= 0; i--) {
-            double randomChange = (Math.random() - 0.5) * 0.02;
-            double open = basePrice * (1 + randomChange);
-            double close = open * (1 + (Math.random() - 0.5) * 0.01);
-            double high = Math.max(open, close) * (1 + Math.random() * 0.005);
-            double low = Math.min(open, close) * (1 - Math.random() * 0.005);
-            double volume = 1000000 + Math.random() * 5000000;
-
-            CandleData candle = new CandleData();
-            candle.setSymbol(symbol);
-            candle.setTimestamp(now.minusHours(i * getTimeframeHours(timeframe)));
-            candle.setOpen(open);
-            candle.setHigh(high);
-            candle.setLow(low);
-            candle.setClose(close);
-            candle.setVolume(volume);
-            candle.setTimeframe(timeframe);
-
-            candles.add(candle);
-            basePrice = close;
-        }
-
-        return candles;
+    @Operation(summary = "Clear all signal history", description = "Clear all stored signal history")
+    @DeleteMapping("/history")
+    public ResponseEntity<Void> clearAllSignalHistory() {
+        cryptoSignalService.clearAllSignalHistory();
+        return ResponseEntity.ok().build();
     }
 
     private int getTimeframeHours(String timeframe) {

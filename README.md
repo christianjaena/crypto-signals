@@ -32,7 +32,7 @@ A sophisticated Spring Boot application that generates cryptocurrency trading si
 
 ## 📋 Prerequisites
 
-- Java 17 or higher
+- Java 25
 - Maven 3.6 or higher
 - MEXC API account with API keys
 
