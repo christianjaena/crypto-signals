@@ -33,33 +33,33 @@ public class CryptoSignalService {
                                      List<CandleData> candles15m) {
 
         if (!signalFilterService.isSymbolValid(symbol)) {
-            return createHoldSignal(symbol, "Invalid symbol format");
+            return createHoldSignal(symbol, candles15m, "Invalid symbol format");
         }
 
         if (!signalFilterService.hasSufficientData(candles1D, candles4H, candles15m)) {
-            return createHoldSignal(symbol, "Insufficient data for analysis");
+            return createHoldSignal(symbol, candles15m, "Insufficient data for analysis");
         }
 
         Trend trend1D = trendAnalysisService.determineTrend1D(candles1D);
 
         if (trend1D == Trend.SIDEWAYS) {
-            return createHoldSignal(symbol, "1D trend is sideways");
+            return createHoldSignal(symbol, candles15m, "1D trend is sideways");
         }
 
         Setup setup4H = setupZoneService.identifySetup4H(candles4H, trend1D);
 
         if (setup4H == Setup.NONE) {
-            return createHoldSignal(symbol, "No valid setup zone identified on 4H timeframe");
+            return createHoldSignal(symbol, candles15m, "No valid setup zone identified on 4H timeframe");
         }
 
         Signal entry15m = entryConfirmationService.confirmEntry15m(candles15m, setup4H);
 
         if (entry15m == Signal.HOLD) {
-            return createHoldSignal(symbol, "Entry conditions not met on 15m timeframe");
+            return createHoldSignal(symbol, candles15m, "Entry conditions not met on 15m timeframe");
         }
 
         if (signalFilterService.shouldFilterSignal(symbol, candles1D, candles4H, entry15m)) {
-            return createHoldSignal(symbol, "Signal filtered due to sideways RSI, low volume, or frequency limit");
+            return createHoldSignal(symbol, candles15m, "Signal filtered due to sideways RSI, low volume, or frequency limit");
         }
 
         int confidence = confidenceScoringService.calculateConfidence(
@@ -86,13 +86,23 @@ public class CryptoSignalService {
         return signal;
     }
 
-    private CryptoSignal createHoldSignal(String symbol, String reason) {
+    private CryptoSignal createHoldSignal(String symbol, List<CandleData> candles15m, String reason) {
         CryptoSignal signal = new CryptoSignal();
         signal.setSymbol(symbol);
         signal.setTrend1D(Trend.SIDEWAYS);
         signal.setSetup4H(Setup.NONE);
         signal.setEntry15m(Signal.HOLD);
         signal.setConfidence(0);
+        
+        // Set current price from latest candle if available
+        double currentPrice = 0;
+        if (candles15m != null && !candles15m.isEmpty()) {
+            currentPrice = candles15m.get(candles15m.size() - 1).getClose();
+        }
+        signal.setCurrentPrice(currentPrice);
+        signal.setStopLoss(0);
+        signal.setPredictionPriceGrowth(0);
+        
         signal.setNotes(List.of(reason));
         return signal;
     }
