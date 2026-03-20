@@ -67,38 +67,61 @@ A sophisticated Spring Boot application that generates cryptocurrency trading si
 
 ## 📊 API Endpoints
 
-### Generate Signal
+### Generate Signals
 ```http
-POST /api/signals/generate
-Content-Type: application/json
-
-{
-  "symbol": "BTC/USDT"
-}
+GET /api/signals/generate?symbols=BTC,ETH,SOL
 ```
 
+**Parameters:**
+- **symbols** (required): Comma-separated list of symbols without USDT suffix (e.g., `BTC,ETH,SOL`)
+- USDT is automatically appended to each symbol internally
+
 **Response:**
+Returns an array of signals, one for each requested symbol:
+
 ```json
-{
-  "symbol": "BTC/USDT",
-  "trend_1D": "BULLISH",
-  "setup_4H": "LONG",
-  "entry_15m": "BUY",
-  "confidence": 92,
-  "notes": [
-    "1D trend bullish (price > EMA200, EMA50 > EMA200, RSI>50)",
-    "4H setup valid (price near EMA50, RSI 30-40)",
-    "15m entry confirmed (RSI < 30, StochRSI cross up)",
-    "Elliott Wave detected: Wave 3 impulse → aligns with trend",
-    "Volume above 20-period average",
-    "MACD confirms bullish momentum",
-    "Candlestick pattern: bullish engulfing",
-    "Trade near key support and Fibonacci 50% retracement",
-    "Session: NY + London overlap",
-    "Confidence = 92%"
-  ],
-  "timestamp": "2026-03-20T11:23:00Z"
-}
+[
+  {
+    "symbol": "BTCUSDT",
+    "currentPrice": 85000.50,
+    "stopLoss": 82000.00,
+    "predictionPriceGrowth": 92000.00,
+    "trend_1D": "BULLISH",
+    "setup_4H": "LONG",
+    "entry_15m": "BUY",
+    "confidence": 92,
+    "notes": [
+      "1D trend bullish (price > EMA200, EMA50 > EMA200, RSI>50)",
+      "4H setup valid (price near EMA50, RSI 30-40)",
+      "15m entry confirmed (RSI < 30, StochRSI cross up)",
+      "Elliott Wave detected: Wave 3 impulse → aligns with trend",
+      "Volume above 20-period average",
+      "MACD confirms bullish momentum",
+      "Candlestick pattern: bullish engulfing",
+      "Trade near key support and Fibonacci 50% retracement",
+      "Session: NY + London overlap",
+      "Confidence = 92%"
+    ],
+    "timestamp": "2026-03-20T11:23:00Z"
+  },
+  {
+    "symbol": "ETHUSDT",
+    "currentPrice": 3200.75,
+    "stopLoss": 3100.00,
+    "predictionPriceGrowth": 3500.00,
+    "trend_1D": "BEARISH",
+    "setup_4H": "SHORT",
+    "entry_15m": "SELL",
+    "confidence": 78,
+    "notes": [
+      "1D trend bearish",
+      "4H setup short",
+      "15m entry sell confirmed",
+      "Confidence = 78%"
+    ],
+    "timestamp": "2026-03-20T11:23:00Z"
+  }
+]
 ```
 
 ### Get Historical Signals

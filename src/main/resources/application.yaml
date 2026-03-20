@@ -1,3 +1,27 @@
 spring:
   application:
     name: crypto-signals
+
+server:
+  port: 8080
+
+# MEXC API Configuration
+mexc:
+  access-key: ${MEXC_ACCESS_KEY:default_access_key}
+  secret-key: ${MEXC_SECRET_KEY:default_secret_key}
+  base-url: https://api.mexc.com
+  timeout: 10000
+
+# OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Logging
+logging:
+  level:
+    com.christianjaena.crypto_signals: DEBUG
+    org.springframework.web.client: DEBUG

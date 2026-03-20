@@ -4,45 +4,32 @@ import com.christianjaena.crypto_signals.config.MexcConfig;
 import com.christianjaena.crypto_signals.model.CandleData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.lang.reflect.Array;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class MexcApiService {
 
     private final MexcConfig mexcConfig;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public MexcApiService(MexcConfig mexcConfig) {
-        this.mexcConfig = mexcConfig;
-        this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
+        this(mexcConfig, RestClient.create());
     }
 
-    public List<CandleData> getKlineData(String symbol, String interval, int limit) {
-        try {
-            String url = String.format("%s/api/v3/klines?symbol=%s&interval=%s&limit=%d",
-                mexcConfig.getBaseUrl(), symbol.replace("/", ""), interval, limit);
-
-            String response = restTemplate.getForObject(url, String.class);
-            return parseKlineData(response, symbol, interval);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch kline data from MEXC", e);
-        }
+    public MexcApiService(MexcConfig mexcConfig, RestClient restClient) {
+        this.mexcConfig = mexcConfig;
+        this.restClient = restClient;
+        this.objectMapper = new ObjectMapper();
     }
 
     private List<CandleData> parseKlineData(String response, String symbol, String interval) {
@@ -74,34 +61,16 @@ public class MexcApiService {
         return candleDataList;
     }
 
-    public List<String> getAvailableSymbols() {
-        try {
-            String url = mexcConfig.getBaseUrl() + "/api/v3/ticker/24hr";
-            String response = restTemplate.getForObject(url, String.class);
-            
-            List<String> symbols = new ArrayList<>();
-            JsonNode root = objectMapper.readTree(response);
-            
-            for (JsonNode ticker : root) {
-                String symbol = ticker.get("symbol").asText();
-                if (symbol.endsWith("USDT")) {
-                    symbols.add(symbol.replace("USDT", "/USDT"));
-                }
-            }
-            
-            return symbols;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch symbols from MEXC", e);
-        }
-    }
-
     public boolean isSymbolValid(String symbol) {
         try {
             String cleanSymbol = symbol.replace("/", "");
             String url = String.format("%s/api/v3/exchangeInfo?symbol=%s",
                 mexcConfig.getBaseUrl(), cleanSymbol);
             
-            String response = restTemplate.getForObject(url, String.class);
+            String response = restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(String.class);
             JsonNode root = objectMapper.readTree(response);
             JsonNode symbols = root.get("symbols");
             
@@ -119,26 +88,18 @@ public class MexcApiService {
         }
     }
 
-    private String generateSignature(String data) {
+    public List<CandleData> getKlineData(String symbol, String interval, int limit) {
         try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(
-                mexcConfig.getSecretKey().getBytes(StandardCharsets.UTF_8), 
-                "HmacSHA256"
-            );
-            mac.init(secretKeySpec);
-            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return bytesToHex(hash);
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new RuntimeException("Failed to generate signature", e);
-        }
-    }
+            String url = String.format("%s/api/v3/klines?symbol=%s&interval=%s&limit=%d",
+                    mexcConfig.getBaseUrl(), symbol.replace("/", ""), interval, limit);
 
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder result = new StringBuilder();
-        for (byte b : bytes) {
-            result.append(String.format("%02x", b));
+            String response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(String.class);
+            return parseKlineData(response, symbol, interval);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch kline data from MEXC", e);
         }
-        return result.toString();
     }
 }

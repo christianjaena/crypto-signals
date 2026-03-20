@@ -90,7 +90,7 @@ public class SignalFilterService {
     }
 
     public boolean isSymbolValid(String symbol) {
-        return symbol != null && !symbol.trim().isEmpty() && symbol.contains("/");
+        return symbol != null && !symbol.trim().isEmpty() && symbol.endsWith("USDT");
     }
 
     public boolean hasSufficientData(List<CandleData> candles1D, 

@@ -1,6 +1,5 @@
 package com.christianjaena.crypto_signals.controller;
 
-import com.christianjaena.crypto_signals.dto.SignalRequest;
 import com.christianjaena.crypto_signals.model.CandleData;
 import com.christianjaena.crypto_signals.model.CryptoSignal;
 import com.christianjaena.crypto_signals.service.CryptoSignalService;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,49 +33,41 @@ public class CryptoSignalController {
         this.mexcApiService = mexcApiService;
     }
 
-    @Operation(summary = "Generate signal with custom data", description = "Generate trading signal using provided candle data")
+    @Operation(summary = "Generate signals for multiple symbols", description = "Generate trading signals by fetching real-time data from MEXC exchange. Symbols should be provided without USDT suffix (e.g., BTC,ETH,SOL).")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Signal generated successfully",
+        @ApiResponse(responseCode = "200", description = "Signals generated successfully",
             content = @Content(schema = @Schema(implementation = CryptoSignal.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request data")
-    })
-    @PostMapping("/generate")
-    public ResponseEntity<CryptoSignal> generateSignal(@RequestBody SignalRequest request) {
-        try {
-            CryptoSignal signal = cryptoSignalService.generateSignal(
-                request.getSymbol(),
-                request.getCandles1D(),
-                request.getCandles4H(),
-                request.getCandles15m()
-            );
-            return ResponseEntity.ok(signal);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @Operation(summary = "Generate signal using MEXC data", description = "Generate trading signal by fetching real-time data from MEXC exchange")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Signal generated successfully",
-            content = @Content(schema = @Schema(implementation = CryptoSignal.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid symbol or API error"),
-        @ApiResponse(responseCode = "404", description = "Symbol not found")
+        @ApiResponse(responseCode = "400", description = "Invalid symbols or API error")
     })
     @GetMapping("/generate")
-    public ResponseEntity<CryptoSignal> generateSignalForSymbol(
-            @Parameter(description = "Trading symbol (e.g., BTC/USDT)", required = true)
-            @RequestParam String symbol) {
+    public ResponseEntity<List<CryptoSignal>> generateSignals(
+            @Parameter(description = "Trading symbols without USDT suffix (e.g., BTC,ETH,SOL)", required = true)
+            @RequestParam String symbols) {
         try {
-            if (!mexcApiService.isSymbolValid(symbol)) {
-                return ResponseEntity.notFound().build();
+            String[] symbolArray = symbols.split(",");
+            List<CryptoSignal> signals = new ArrayList<>();
+            
+            for (String rawSymbol : symbolArray) {
+                String symbol = rawSymbol.trim().toUpperCase();
+                String fullSymbol = symbol + "USDT";
+                
+                if (!mexcApiService.isSymbolValid(fullSymbol)) {
+                    CryptoSignal errorSignal = new CryptoSignal();
+                    errorSignal.setSymbol(fullSymbol);
+                    errorSignal.setNotes(List.of("Invalid symbol: " + symbol));
+                    signals.add(errorSignal);
+                    continue;
+                }
+
+                List<CandleData> candles1D = mexcApiService.getKlineData(fullSymbol, "1d", 200);
+                List<CandleData> candles4H = mexcApiService.getKlineData(fullSymbol, "4h", 100);
+                List<CandleData> candles15m = mexcApiService.getKlineData(fullSymbol, "15m", 50);
+
+                CryptoSignal signal = cryptoSignalService.generateSignal(fullSymbol, candles1D, candles4H, candles15m);
+                signals.add(signal);
             }
-
-            List<CandleData> candles1D = mexcApiService.getKlineData(symbol, "1d", 200);
-            List<CandleData> candles4H = mexcApiService.getKlineData(symbol, "4h", 100);
-            List<CandleData> candles15m = mexcApiService.getKlineData(symbol, "15m", 50);
-
-            CryptoSignal signal = cryptoSignalService.generateSignal(symbol, candles1D, candles4H, candles15m);
-            return ResponseEntity.ok(signal);
+            
+            return ResponseEntity.ok(signals);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

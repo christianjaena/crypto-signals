@@ -4,7 +4,8 @@
 
 ## Inputs
 
-- **Symbol** (e.g., BTC/USDT)
+- **Symbols** (e.g., BTC, ETH, SOL) — USDT is automatically appended
+- Multiple symbols can be passed in a single request
 - **Candle data** (OHLCV) for three timeframes:
   - HTF = 1D
   - MTF = 4H
@@ -225,7 +226,10 @@
 
 ```json
 {
-  "symbol": "BTC/USDT",
+  "symbol": "BTCUSDT",
+  "currentPrice": 85000.50,
+  "stopLoss": 82000.00,
+  "predictionPriceGrowth": 92000.00,
   "trend_1D": "BULLISH",
   "setup_4H": "LONG",
   "entry_15m": "BUY",

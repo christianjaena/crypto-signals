@@ -1,17 +1,13 @@
 package com.christianjaena.crypto_signals.controller;
 
-import com.christianjaena.crypto_signals.dto.SignalRequest;
 import com.christianjaena.crypto_signals.model.CandleData;
 import com.christianjaena.crypto_signals.model.CryptoSignal;
 import com.christianjaena.crypto_signals.service.CryptoSignalService;
 import com.christianjaena.crypto_signals.service.MexcApiService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,9 +26,6 @@ class CryptoSignalControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockitoBean
     private CryptoSignalService cryptoSignalService;
 
@@ -46,17 +39,17 @@ class CryptoSignalControllerTest {
 
     @BeforeEach
     void setUp() {
-        // Configure ObjectMapper for Java 8 time support
-        objectMapper.registerModule(new JavaTimeModule());
-        
         // Create mock candle data
-        mockCandles1D = createMockCandles("BTC/USDT", "1D", 200);
-        mockCandles4H = createMockCandles("BTC/USDT", "4H", 100);
-        mockCandles15m = createMockCandles("BTC/USDT", "15m", 50);
+        mockCandles1D = createMockCandles("BTCUSDT", "1D", 200);
+        mockCandles4H = createMockCandles("BTCUSDT", "4H", 100);
+        mockCandles15m = createMockCandles("BTCUSDT", "15m", 50);
         
         // Create mock signal
         mockSignal = new CryptoSignal();
-        mockSignal.setSymbol("BTC/USDT");
+        mockSignal.setSymbol("BTCUSDT");
+        mockSignal.setCurrentPrice(85000.50);
+        mockSignal.setStopLoss(82000.00);
+        mockSignal.setPredictionPriceGrowth(92000.00);
         mockSignal.setConfidence(85);
         mockSignal.setNotes(Arrays.asList("Strong uptrend", "High volume"));
     }
@@ -73,60 +66,64 @@ class CryptoSignalControllerTest {
     }
 
     @Test
-    void generateSignalForSymbol_WithValidSymbol_ReturnsSignal() throws Exception {
+    void generateSignals_WithValidSymbols_ReturnsSignals() throws Exception {
         // Arrange
-        when(mexcApiService.isSymbolValid("BTC/USDT")).thenReturn(true);
-        when(mexcApiService.getKlineData("BTC/USDT", "1d", 200)).thenReturn(mockCandles1D);
-        when(mexcApiService.getKlineData("BTC/USDT", "4h", 100)).thenReturn(mockCandles4H);
-        when(mexcApiService.getKlineData("BTC/USDT", "15m", 50)).thenReturn(mockCandles15m);
-        when(cryptoSignalService.generateSignal(eq("BTC/USDT"), eq(mockCandles1D), eq(mockCandles4H), eq(mockCandles15m)))
+        when(mexcApiService.isSymbolValid("BTCUSDT")).thenReturn(true);
+        when(mexcApiService.getKlineData("BTCUSDT", "1d", 200)).thenReturn(mockCandles1D);
+        when(mexcApiService.getKlineData("BTCUSDT", "4h", 100)).thenReturn(mockCandles4H);
+        when(mexcApiService.getKlineData("BTCUSDT", "15m", 50)).thenReturn(mockCandles15m);
+        when(cryptoSignalService.generateSignal(eq("BTCUSDT"), eq(mockCandles1D), eq(mockCandles4H), eq(mockCandles15m)))
                 .thenReturn(mockSignal);
 
         // Act & Assert
-        mockMvc.perform(get("/api/signals/generate").param("symbol", "BTC/USDT"))
+        mockMvc.perform(get("/api/signals/generate").param("symbols", "BTC"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.symbol").value("BTC/USDT"))
-                .andExpect(jsonPath("$.confidence").value(85));
+                .andExpect(jsonPath("$[0].symbol").value("BTCUSDT"))
+                .andExpect(jsonPath("$[0].currentPrice").value(85000.50))
+                .andExpect(jsonPath("$[0].stopLoss").value(82000.00))
+                .andExpect(jsonPath("$[0].predictionPriceGrowth").value(92000.00))
+                .andExpect(jsonPath("$[0].confidence").value(85));
 
-        verify(mexcApiService).isSymbolValid("BTC/USDT");
-        verify(cryptoSignalService).generateSignal(eq("BTC/USDT"), eq(mockCandles1D), eq(mockCandles4H), eq(mockCandles15m));
+        verify(mexcApiService).isSymbolValid("BTCUSDT");
+        verify(cryptoSignalService).generateSignal(eq("BTCUSDT"), eq(mockCandles1D), eq(mockCandles4H), eq(mockCandles15m));
     }
 
     @Test
-    void generateSignalForSymbol_WithInvalidSymbol_ReturnsNotFound() throws Exception {
+    void generateSignals_WithMultipleSymbols_ReturnsSignals() throws Exception {
         // Arrange
-        when(mexcApiService.isSymbolValid("INVALID")).thenReturn(false);
+        CryptoSignal ethSignal = new CryptoSignal();
+        ethSignal.setSymbol("ETHUSDT");
+        ethSignal.setCurrentPrice(3200.75);
+        ethSignal.setStopLoss(3100.00);
+        ethSignal.setPredictionPriceGrowth(3500.00);
+        ethSignal.setConfidence(78);
+
+        when(mexcApiService.isSymbolValid("BTCUSDT")).thenReturn(true);
+        when(mexcApiService.isSymbolValid("ETHUSDT")).thenReturn(true);
+        when(mexcApiService.getKlineData(anyString(), anyString(), anyInt())).thenReturn(mockCandles1D);
+        when(cryptoSignalService.generateSignal(eq("BTCUSDT"), any(), any(), any())).thenReturn(mockSignal);
+        when(cryptoSignalService.generateSignal(eq("ETHUSDT"), any(), any(), any())).thenReturn(ethSignal);
 
         // Act & Assert
-        mockMvc.perform(get("/api/signals/generate").param("symbol", "INVALID"))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/signals/generate").param("symbols", "BTC,ETH"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("BTCUSDT"))
+                .andExpect(jsonPath("$[1].symbol").value("ETHUSDT"));
+    }
 
-        verify(mexcApiService).isSymbolValid("INVALID");
+    @Test
+    void generateSignals_WithInvalidSymbol_ReturnsErrorSignal() throws Exception {
+        // Arrange
+        when(mexcApiService.isSymbolValid("INVALIDUSDT")).thenReturn(false);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/signals/generate").param("symbols", "INVALID"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].symbol").value("INVALIDUSDT"))
+                .andExpect(jsonPath("$[0].notes[0]").value("Invalid symbol: INVALID"));
+
+        verify(mexcApiService).isSymbolValid("INVALIDUSDT");
         verify(mexcApiService, never()).getKlineData(anyString(), anyString(), anyInt());
-    }
-
-    @Test
-    void generateSignal_WithValidRequest_ReturnsSignal() throws Exception {
-        // Arrange
-        SignalRequest request = new SignalRequest();
-        request.setSymbol("BTC/USDT");
-        request.setCandles1D(mockCandles1D);
-        request.setCandles4H(mockCandles4H);
-        request.setCandles15m(mockCandles15m);
-
-        when(cryptoSignalService.generateSignal(eq("BTC/USDT"), eq(mockCandles1D), eq(mockCandles4H), eq(mockCandles15m)))
-                .thenReturn(mockSignal);
-
-        // Act & Assert
-        mockMvc.perform(post("/api/signals/generate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.symbol").value("BTC/USDT"))
-                .andExpect(jsonPath("$.confidence").value(85))
-                .andExpect(jsonPath("$.notes").isArray());
-
-        verify(cryptoSignalService).generateSignal(eq("BTC/USDT"), eq(mockCandles1D), eq(mockCandles4H), eq(mockCandles15m));
     }
 
     private List<CandleData> createMockCandles(String symbol, String timeframe, int count) {

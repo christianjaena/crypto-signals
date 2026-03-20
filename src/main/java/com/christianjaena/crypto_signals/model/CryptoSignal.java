@@ -11,6 +11,9 @@ import java.util.List;
 @AllArgsConstructor
 public class CryptoSignal {
     private String symbol;
+    private double currentPrice;
+    private double stopLoss;
+    private double predictionPriceGrowth;
     private Trend trend1D;
     private Setup setup4H;
     private Signal entry15m;

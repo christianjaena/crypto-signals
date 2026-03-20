@@ -7,8 +7,8 @@ import java.util.List;
 
 @Schema(description = "Signal generation request")
 public class SignalRequest {
-    @Schema(description = "Trading symbol", example = "BTC/USDT")
-    private String symbol;
+    @Schema(description = "Trading symbols (e.g., BTC, ETH, SOL)", example = "[\"BTC\", \"ETH\"]")
+    private List<String> symbols;
     
     @Schema(description = "1D candlestick data")
     private List<CandleData> candles1D;
@@ -19,8 +19,8 @@ public class SignalRequest {
     @Schema(description = "15m candlestick data")
     private List<CandleData> candles15m;
 
-    public String getSymbol() { return symbol; }
-    public void setSymbol(String symbol) { this.symbol = symbol; }
+    public List<String> getSymbols() { return symbols; }
+    public void setSymbols(List<String> symbols) { this.symbols = symbols; }
 
     public List<CandleData> getCandles1D() { return candles1D; }
     public void setCandles1D(List<CandleData> candles1D) { this.candles1D = candles1D; }
