@@ -34,7 +34,6 @@ A sophisticated Spring Boot application that generates cryptocurrency trading si
 
 - Java 25
 - Maven 3.6 or higher
-- MEXC API account with API keys
 
 ## 🛠️ Installation
 
@@ -44,22 +43,10 @@ A sophisticated Spring Boot application that generates cryptocurrency trading si
    cd crypto-signals
    ```
 
-2. **Configure API Keys**
+2. **Build and Run**
    
-   Copy the environment template:
-   ```bash
-   cp .env.example .env
-   ```
+   No API key configuration needed - the application uses MEXC public API endpoints.
    
-   Edit `.env` with your MEXC API credentials:
-   ```env
-   MEXC_ACCESS_KEY=your_mexc_access_key_here
-   MEXC_SECRET_KEY=your_mexc_secret_key_here
-   ```
-   
-   For detailed setup instructions, see [SETUP.md](SETUP.md).
-
-3. **Build and Run**
    ```bash
    mvn clean install
    mvn spring-boot:run
